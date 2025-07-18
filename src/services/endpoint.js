@@ -1,4 +1,4 @@
-export const API_BASE = process.env.API_BASE || 'http://localhost:3000'
+export const API_BASE = process.env.API_BASE || 'https://gemini-backend-pyfo.onrender.com'
 
 export const ENDPOINTS = {
   CHAT: '/chat',

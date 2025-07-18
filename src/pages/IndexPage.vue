@@ -5,7 +5,10 @@
       class="flex justify-between items-center px-8 py-4 bg-white/80 backdrop-blur-sm border-b border-gray-200/50"
       v-if="hasMessages"
     >
-      <div class="text-base font-medium text-gray-700">{{ messageCount }} messages</div>
+      <div class="flex items-center space-x-3">
+        <img src="/faviconcopy.webp" alt="Logo" class="w-8 h-8 rounded-lg" />
+        <div class="text-base font-medium text-gray-700">{{ messageCount }} messages</div>
+      </div>
       <q-btn
         flat
         dense

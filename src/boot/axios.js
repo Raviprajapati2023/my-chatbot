@@ -1,24 +1,70 @@
 import { defineBoot } from '#q-app/wrappers'
-import axios from 'axios'
+import axios, { HttpStatusCode, isAxiosError } from 'axios'
+import { API_BASE } from 'src/services/endpoint'
+import { $notify } from 'src/services/setup'
 
-// Be careful when using SSR for cross-request state pollution
-// due to creating a Singleton instance here;
-// If any client changes this (global) instance, it might be a
-// good idea to move this instance creation inside of the
-// "export default () => {}" function below (which runs individually
-// for each client)
-const api = axios.create({ baseURL: 'https://api.example.com' })
+const api = axios.create({
+  baseURL: API_BASE
+})
+
+const handleResponseSuccess = (res) => {
+  const data = res?.data
+
+  // For successful responses (200-299), return the data directly
+  if (res.status >= 200 && res.status < 300) {
+    return data
+  }
+
+  // For other status codes, still return data but log it
+  console.log('Response with status:', res.status, data)
+  return data
+}
+
+const handleResponseError = (error) => {
+  if (isAxiosError(error)) {
+    const status = error.response?.status
+    const errorData = error?.response?.data
+    const errorMessage = errorData?.error || errorData?.message || error.message
+
+    console.log('API Error:', { status, errorData, errorMessage })
+
+    // Show notification for errors
+    $notify({ caption: errorMessage || 'Something went wrong!', type: 'negative' })
+
+    if (status === HttpStatusCode.Unauthorized || status === HttpStatusCode.Forbidden) {
+      // Handle unauthorized access
+      localStorage.removeItem('accessToken')
+      
+      // Optional: Redirect to login page
+      // window.location.href = '/sign-in'
+    }
+
+    // Return the error data so the calling code can handle it
+    return Promise.reject(errorData || { error: errorMessage })
+  }
+
+  // fallback for non-Axios errors
+  const fallbackError = { error: 'Unexpected error occurred.' }
+  $notify({ caption: fallbackError.error, type: 'negative' })
+  return Promise.reject(fallbackError)
+}
+
+api.interceptors.request.use(config => {
+  // Add auth token if available
+  const accessToken = localStorage.getItem('accessToken')
+  
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
+  }
+
+  return config
+})
+
+api.interceptors.response.use(handleResponseSuccess, handleResponseError)
 
 export default defineBoot(({ app }) => {
-  // for use inside Vue files (Options API) through this.$axios and this.$api
-
   app.config.globalProperties.$axios = axios
-  // ^ ^ ^ this will allow you to use this.$axios (for Vue Options API form)
-  //       so you won't necessarily have to import axios in each vue file
-
   app.config.globalProperties.$api = api
-  // ^ ^ ^ this will allow you to use this.$api (for Vue Options API form)
-  //       so you can easily perform requests against your app's API
 })
 
 export { api }
